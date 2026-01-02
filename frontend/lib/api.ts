@@ -78,16 +78,20 @@ export const analyzeDocument = async (file: File): Promise<AnalysisResult> => {
   formData.append('file', file);
 
   try {
+    // API URL 확인 (디버깅용)
+    if (process.env.NODE_ENV === 'development') {
+      console.log('API Base URL:', API_BASE_URL);
+      console.log('Full URL:', `${API_BASE_URL}/api/analyze`);
+    }
+
     const response = await axios.post<AnalysisResult>(
       `${API_BASE_URL}/api/analyze`,
       formData,
       {
-        // FormData를 사용할 때는 Content-Type을 명시하지 않아야 함
+        // FormData를 사용할 때는 headers를 아예 설정하지 않아야 함
         // 브라우저가 자동으로 boundary를 포함한 Content-Type을 설정함
-        headers: {
-          // 'Content-Type' 제거 - FormData가 자동으로 설정함
-        },
         timeout: 60000, // 60초 타임아웃
+        // withCredentials: false, // CORS 문제 시 필요할 수 있음
       }
     );
 
