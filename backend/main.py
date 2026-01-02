@@ -47,8 +47,14 @@ async def global_exception_handler(request: Request, exc: Exception):
 # 프로덕션 배포 시 실제 프론트엔드 URL을 추가하세요
 FRONTEND_URLS = [
     "http://localhost:3000",  # 개발 환경
-    # "https://your-project.vercel.app",  # 프로덕션: 실제 프론트엔드 URL로 변경
+    # 프로덕션 프론트엔드 URL을 아래에 추가하세요
+    # "https://your-project.vercel.app",  # 실제 Vercel URL로 변경 필요
 ]
+
+# 환경 변수에서 프론트엔드 URL 읽기 (선택사항)
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+if FRONTEND_URL and FRONTEND_URL not in FRONTEND_URLS:
+    FRONTEND_URLS.append(FRONTEND_URL)
 
 app.add_middleware(
     CORSMiddleware,
