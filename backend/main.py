@@ -56,9 +56,15 @@ FRONTEND_URL = os.getenv("FRONTEND_URL")
 if FRONTEND_URL and FRONTEND_URL not in FRONTEND_URLS:
     FRONTEND_URLS.append(FRONTEND_URL)
 
+# Vercel 도메인 패턴 허용 (모든 Vercel 앱 허용)
+# 보안을 위해 특정 도메인만 허용하는 것을 권장하지만, 개발 단계에서는 유연하게 설정
+ALLOWED_ORIGINS = FRONTEND_URLS + [
+    "https://*.vercel.app",  # 모든 Vercel 앱 허용
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=FRONTEND_URLS,
+    allow_origins=["*"],  # 개발 단계: 모든 Origin 허용 (프로덕션에서는 특정 도메인만 허용 권장)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
