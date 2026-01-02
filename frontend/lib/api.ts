@@ -82,8 +82,10 @@ export const analyzeDocument = async (file: File): Promise<AnalysisResult> => {
       `${API_BASE_URL}/api/analyze`,
       formData,
       {
+        // FormData를 사용할 때는 Content-Type을 명시하지 않아야 함
+        // 브라우저가 자동으로 boundary를 포함한 Content-Type을 설정함
         headers: {
-          'Content-Type': 'multipart/form-data',
+          // 'Content-Type' 제거 - FormData가 자동으로 설정함
         },
         timeout: 60000, // 60초 타임아웃
       }
