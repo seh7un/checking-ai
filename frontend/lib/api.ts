@@ -77,24 +77,34 @@ export const analyzeDocument = async (file: File): Promise<AnalysisResult> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  try {
-    // API URL 확인 (디버깅용)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('API Base URL:', API_BASE_URL);
-      console.log('Full URL:', `${API_BASE_URL}/api/analyze`);
-    }
+  // API URL 확인 (항상 로그 출력)
+  const fullUrl = `${API_BASE_URL}/api/analyze`;
+  console.log('🔍 API Request Debug:');
+  console.log('  - API Base URL:', API_BASE_URL);
+  console.log('  - Full URL:', fullUrl);
+  console.log('  - File name:', file.name);
+  console.log('  - File size:', file.size);
+  console.log('  - File type:', file.type);
 
+  try {
     const response = await axios.post<AnalysisResult>(
-      `${API_BASE_URL}/api/analyze`,
+      fullUrl,
       formData,
       {
         // FormData를 사용할 때는 headers를 아예 설정하지 않아야 함
         // 브라우저가 자동으로 boundary를 포함한 Content-Type을 설정함
         timeout: 60000, // 60초 타임아웃
-        // withCredentials: false, // CORS 문제 시 필요할 수 있음
+        // CORS 관련 설정
+        withCredentials: false,
+        // 요청 인터셉터로 실제 요청 확인
+        transformRequest: [(data) => {
+          console.log('📤 Sending request to:', fullUrl);
+          return data;
+        }],
       }
     );
 
+    console.log('✅ Response received:', response.status);
     return response.data;
   } catch (error: any) {
     // 에러 처리 (민감 정보 노출 방지)

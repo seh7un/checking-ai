@@ -66,9 +66,24 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # 개발 단계: 모든 Origin 허용 (프로덕션에서는 특정 도메인만 허용 권장)
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],  # 명시적으로 메서드 지정
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+# OPTIONS 요청 명시적 처리 (CORS preflight)
+@app.options("/api/analyze")
+async def options_analyze():
+    """CORS preflight 요청 처리"""
+    return JSONResponse(
+        status_code=200,
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
 
 
 @app.get("/")
