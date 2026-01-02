@@ -6,7 +6,13 @@ import axios from 'axios';
 
 // 환경 변수는 빌드 타임에 정적으로 대체됨
 // 브라우저에서는 process.env를 직접 접근할 수 없음
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// 프로토콜이 없는 경우 자동으로 추가 (호환성)
+if (API_BASE_URL && !API_BASE_URL.startsWith('http://') && !API_BASE_URL.startsWith('https://')) {
+  API_BASE_URL = `https://${API_BASE_URL}`;
+  console.warn('⚠️ API URL에 프로토콜이 없어서 https://를 자동 추가했습니다. Vercel 환경 변수를 수정하세요.');
+}
 
 // 전역 변수로 노출 (디버깅용)
 if (typeof window !== 'undefined') {

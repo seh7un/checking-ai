@@ -1,5 +1,5 @@
 """
-Stateless Sensitive Document Analyzer - Backend
+계약 문서 분석기 - Backend
 FastAPI 서버: 메모리 기반 파일 처리 (Zero Storage Policy)
 """
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
@@ -22,8 +22,8 @@ from utils.ai_analyzer import AIAnalyzer
 from utils.logger import safe_log, log_error, sanitize_for_logging
 
 app = FastAPI(
-    title="Stateless Document Analyzer API",
-    description="Zero-storage document analysis service",
+    title="계약 문서 분석기 API",
+    description="계약서 분석 서비스 - Zero Storage Policy",
     version="1.0.0"
 )
 
@@ -91,7 +91,7 @@ async def root():
     """Health check endpoint"""
     return {
         "status": "ok",
-        "message": "Stateless Document Analyzer API is running",
+        "message": "계약 문서 분석기 API is running",
         "policy": "Zero Storage - All files processed in memory only"
     }
 

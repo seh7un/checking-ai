@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "민감 문서 분석기 - Stateless Document Analyzer",
-  description: "개인정보와 법적 위험 요소를 자동으로 분석하는 보안 문서 분석 서비스. Zero Storage 정책으로 모든 파일은 메모리에서만 처리됩니다.",
-  keywords: ["문서 분석", "개인정보 보호", "PII 감지", "문서 보안", "민감 정보 분석"],
-  authors: [{ name: "Stateless Document Analyzer" }],
+  title: "계약 문서 분석기",
+  description: "계약서에서 개인정보 노출, 불리한 조항, 법적 위험 요소를 자동으로 분석하는 서비스. Zero Storage 정책으로 모든 파일은 메모리에서만 처리됩니다.",
+  keywords: ["계약서 분석", "계약 문서", "법적 위험", "개인정보 보호", "계약 검토", "문서 분석"],
+  authors: [{ name: "계약 문서 분석기" }],
   openGraph: {
-    title: "민감 문서 분석기",
-    description: "업로드한 문서에서 개인정보와 법적 위험 요소를 자동으로 분석합니다.",
+    title: "계약 문서 분석기",
+    description: "계약서에서 개인정보 노출과 법적 위험 요소를 자동으로 분석합니다.",
     type: "website",
   },
 };

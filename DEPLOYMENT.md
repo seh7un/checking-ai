@@ -48,7 +48,7 @@ git add .
 git commit -m "Initial commit: Document Analyzer MVP"
 
 # GitHub 저장소 연결 (YOUR_USERNAME과 YOUR_REPO_NAME을 실제 값으로 변경)
-git remote add origin https://github.com/YOUR_USERNAME/YOUR_REPO_NAME.git
+git remote add origin https://github.com/seh7un/checkingAI.git
 
 # 코드 업로드
 git branch -M main
@@ -88,14 +88,33 @@ git push -u origin main
 ### 2단계: 프로젝트 배포
 
 1. "New Project" → "Deploy from GitHub repo" 선택
-2. GitHub 저장소 선택
-3. "Configure" 클릭
-4. 설정:
-   - **Root Directory**: `backend` 선택
-   - **Start Command**: `python main.py`
-5. **Environment Variables** 추가:
-   - `OPENAI_API_KEY`: OpenAI API Key
-   - `PORT`: `8000` (Railway가 자동 설정)
+2. GitHub 저장소 선택 (`seh7un/checkingAI`)
+3. 배포가 시작되면 프로젝트 페이지로 이동
+
+### 3단계: Root Directory 설정
+
+1. 좌측 메뉴에서 **Settings** 탭 클릭
+2. **Service** 섹션 찾기
+3. **Root Directory** 필드에 `backend` 입력
+4. **Save** 클릭
+
+### 4단계: Start Command 설정
+
+1. **Settings** → **Service** 섹션
+2. **Start Command** 필드에 `python main.py` 입력
+3. **Save** 클릭
+   - 참고: Railway가 자동으로 감지할 수도 있습니다
+
+### 5단계: Environment Variables 추가
+
+1. **Settings** 탭 → **Variables** 섹션 (또는 **Environment** 섹션)
+2. **"New Variable"** 또는 **"Add Variable"** 버튼 클릭
+3. 변수 추가:
+   - **Name**: `OPENAI_API_KEY`
+   - **Value**: 실제 OpenAI API Key 입력
+   - **Add** 클릭
+4. **Save** 클릭
+   - 참고: `PORT`는 Railway가 자동으로 설정하므로 생략 가능
 
 ### 3단계: 도메인 확인
 

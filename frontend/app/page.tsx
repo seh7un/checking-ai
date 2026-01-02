@@ -55,10 +55,10 @@ export default function Home() {
         {/* Header */}
         <header className="mb-8 text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100 sm:text-5xl">
-            민감 문서 분석기
+            계약 문서 분석기
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-400">
-            업로드한 문서에서 개인정보와 법적 위험 요소를 자동으로 분석합니다.
+            계약서에서 개인정보 노출, 불리한 조항, 법적 위험 요소를 자동으로 분석합니다.
             <br />
             <span className="font-semibold text-blue-600 dark:text-blue-400">
               모든 파일은 메모리에서만 처리되며 서버에 저장되지 않습니다.
@@ -149,7 +149,7 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© 2024 Stateless Sensitive Document Analyzer. All rights reserved.</p>
+          <p>© 2024 계약 문서 분석기. All rights reserved.</p>
         </footer>
       </div>
     </main>
