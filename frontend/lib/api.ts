@@ -4,7 +4,15 @@
  */
 import axios from 'axios';
 
+// 환경 변수는 빌드 타임에 정적으로 대체됨
+// 브라우저에서는 process.env를 직접 접근할 수 없음
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+// 전역 변수로 노출 (디버깅용)
+if (typeof window !== 'undefined') {
+  (window as any).__API_BASE_URL__ = API_BASE_URL;
+  console.log('🔧 API Base URL (from build):', API_BASE_URL);
+}
 
 export interface AnalysisResult {
   status: string;

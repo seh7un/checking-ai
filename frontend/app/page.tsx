@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import FileUpload from '@/components/FileUpload';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import AnalysisResult from '@/components/AnalysisResult';
@@ -11,6 +11,15 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResultType | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 환경 변수 확인 (디버깅용)
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    console.log('🌐 Frontend Environment Check:');
+    console.log('  - NEXT_PUBLIC_API_URL:', apiUrl);
+    console.log('  - Full API URL:', `${apiUrl}/api/analyze`);
+    console.log('  - NODE_ENV:', process.env.NODE_ENV);
+  }, []);
 
   const handleFileSelect = async (file: File) => {
     setIsUploading(true);
