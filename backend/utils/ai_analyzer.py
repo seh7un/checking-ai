@@ -58,7 +58,86 @@ class AIAnalyzer:
             max_chars = 8000  # 안전한 토큰 수를 위한 문자 제한
             text_to_analyze = text[:max_chars] if len(text) > max_chars else text
             
-            prompt = f"""다음 문서를 매우 예민하게 분석하여 문제가 될 수 있는 모든 요소를 찾아주세요.
+            # 전세계약 문서인지 확인 (키워드 기반)
+            is_lease_contract = any(keyword in text_to_analyze.lower() for keyword in [
+                '전세', '임대차', '임차인', '임대인', '보증금', '계약서', 
+                '전세계약', '주택임대차', '전세보증금', '확정일자', '전입신고'
+            ])
+            
+            if is_lease_contract:
+                # 전세계약 특화 분석 프롬프트
+                prompt = f"""다음은 전세계약서 문서입니다. 국토교통부 '전세사기피해 예방을 위한 전세계약 제대로 알고 하기' 안내서를 참조하여 분석해주세요.
+
+【전세계약 필수 점검사항】
+
+1. 권리관계 확인
+   - 등기사항증명서 확인 필요 여부 언급 여부
+   - 갑구(소유권), 을구(근저당, 전세권 등) 확인 필요성
+   - 선순위 권리(근저당, 전세권 등) 존재 여부
+
+2. 선순위채권 확인
+   - 확정일자 부여 현황 확인 필요성
+   - 국세/지방세 완납 증명서 확인 필요성
+   - 전입세대 확인서 확인 필요성
+
+3. 건축물 관련
+   - 건축물대장 확인 필요성
+   - 위법건축물 여부 확인 필요성
+   - 건축물 현황도 일치 여부
+
+4. 전세보증보험
+   - 전세보증보험 가입 가능 여부 언급
+   - HUG(주택도시보증공사), HF(한국주택금융공사), SGI(서울보증보험) 관련 언급
+
+5. 계약서 관련
+   - 주택임대차표준계약서 사용 여부
+   - 공인중개사 정상 영업 여부 확인 필요성
+   - 소유자(임대인)와 계약자 일치 여부 확인
+
+6. 계약 후 필수 사항
+   - 주택임대차계약 신고 필요성
+   - 확정일자 받기 필요성
+   - 전입신고 필요성
+
+7. 특약사항
+   - 확정일자 및 전입신고 다음날까지 담보권 등 설정 금지 특약
+   - 위반 시 즉시 계약해지 및 손해배상 특약
+   - 최우선변제 가능 금액 관련 특약
+
+8. 불리한 조항
+   - 임차인에게 불리한 조항 (예: 일방적 계약해지, 손해배상 과다, 권리 포기 등)
+   - 법적 보호를 제한하는 조항
+   - 불공정한 특약사항
+
+9. 개인정보 노출
+   - 임대인/임차인의 주민등록번호, 전화번호 등 개인정보 노출
+   - 계약서에 불필요한 개인정보 포함 여부
+
+이미 감지된 개인정보: {pii_summary.get('total_count', 0)}건
+
+문서 내용:
+{text_to_analyze}
+
+중요: 반드시 순수 JSON 형식으로만 응답하세요. 마크다운 코드 블록이나 추가 설명 없이 JSON만 반환하세요.
+
+다음 JSON 형식으로 응답:
+{{
+    "risk_level": "high|medium|low",
+    "issues": [
+        {{
+            "type": "issue_type (예: 권리관계_미확인, 불리한_조항, 개인정보_노출, 전세보증보험_미언급 등)",
+            "severity": "high|medium|low",
+            "description": "구체적인 문제 설명 (전세사기 피해예방 관점에서)",
+            "problematic_text": "문제가 되는 정확한 텍스트 부분 (원문 그대로)",
+            "corrected_text": "수정된 텍스트 제안 또는 추가 확인 필요 사항",
+            "suggestion": "구체적인 개선 제안 (예: '등기사항증명서 확인 필요', '전세보증보험 가입 권장', '특약사항 추가 필요' 등)"
+        }}
+    ],
+    "summary": "전체 요약 (전세사기 피해예방 관점에서의 종합 평가)"
+}}"""
+            else:
+                # 일반 문서 분석 프롬프트
+                prompt = f"""다음 문서를 매우 예민하게 분석하여 문제가 될 수 있는 모든 요소를 찾아주세요.
 
 분석해야 할 항목:
 1. 공격적이거나 비방하는 표현
@@ -95,7 +174,7 @@ class AIAnalyzer:
                 messages=[
                     {
                         "role": "system",
-                        "content": "당신은 문서의 법적, 윤리적 위험 요소를 분석하는 전문가입니다. 매우 예민하게 모든 문제를 찾아내세요."
+                        "content": "당신은 문서의 법적, 윤리적 위험 요소를 분석하는 전문가입니다. 전세계약서의 경우 국토교통부 '전세사기피해 예방을 위한 전세계약 제대로 알고 하기' 안내서의 체크리스트를 참조하여 분석하세요. 매우 예민하게 모든 문제를 찾아내세요."
                     },
                     {
                         "role": "user",
@@ -199,9 +278,21 @@ class AIAnalyzer:
         else:
             risk_level = "low"
         
+        # 전세계약 관련 키워드 확인
+        is_lease_contract = any(keyword in text.lower() for keyword in [
+            '전세', '임대차', '임차인', '임대인', '보증금', '계약서', 
+            '전세계약', '주택임대차', '전세보증금', '확정일자', '전입신고'
+        ])
+        
         # 텍스트 내용 기반 간단한 키워드 검사
         risk_keywords = ["비밀", "기밀", "내부", "공개금지", "유출", "누설"]
         sensitive_keywords = ["법적", "소송", "위험", "문제"]
+        
+        # 전세계약 관련 위험 키워드
+        lease_risk_keywords = [
+            "근저당", "선순위", "담보권", "경매", "압류", "가압류",
+            "계약해지", "손해배상", "특약", "불리한", "권리포기"
+        ]
         
         issues = []
         
@@ -242,15 +333,59 @@ class AIAnalyzer:
                 })
                 break
         
+        # 전세계약 관련 이슈 감지
+        if is_lease_contract:
+            for keyword in lease_risk_keywords:
+                if keyword in text_lower:
+                    keyword_index = text_lower.find(keyword)
+                    start = max(0, keyword_index - 50)
+                    end = min(len(text), keyword_index + len(keyword) + 50)
+                    problematic_text = text[start:end].strip()
+                    
+                    if keyword in ["근저당", "선순위", "담보권"]:
+                        issues.append({
+                            "type": "권리관계_위험",
+                            "severity": "high",
+                            "description": f"'{keyword}' 관련 내용이 발견되었습니다. 등기사항증명서에서 선순위 권리를 확인해야 합니다.",
+                            "problematic_text": problematic_text,
+                            "corrected_text": "[등기사항증명서 확인 필요: 갑구(소유권), 을구(근저당, 전세권 등) 확인]",
+                            "suggestion": "인터넷등기소(www.iros.go.kr)에서 등기사항증명서를 확인하여 선순위 권리(근저당, 전세권 등) 존재 여부를 확인하세요."
+                        })
+                    elif keyword in ["경매", "압류", "가압류"]:
+                        issues.append({
+                            "type": "재산권_위험",
+                            "severity": "high",
+                            "description": f"'{keyword}' 관련 내용이 발견되었습니다. 해당 부동산의 경매 또는 압류 가능성을 확인해야 합니다.",
+                            "problematic_text": problematic_text,
+                            "corrected_text": "[경매/압류 현황 확인 필요]",
+                            "suggestion": "부동산의 경매 또는 압류 현황을 확인하고, 전세보증보험 가입을 강력히 권장합니다."
+                        })
+                    break
+        
         # PII가 감지된 경우
         if pii_count > 0:
+            pii_description = f"{pii_count}건의 개인정보가 감지되었습니다."
+            if is_lease_contract:
+                pii_description += " 전세계약서에는 주민등록번호, 전화번호 등 개인정보가 포함될 수 있으나, 계약서 외부 공개 시 개인정보 보호법 위반 위험이 있습니다."
+            
             issues.append({
                 "type": "pii_detected",
                 "severity": "high" if high_severity_count > 0 else "medium",
-                "description": f"{pii_count}건의 개인정보가 감지되었습니다.",
+                "description": pii_description,
                 "problematic_text": None,  # PII는 이미 pii_analysis에서 상세히 표시됨
                 "corrected_text": "[개인정보 마스킹 또는 삭제 필요]",
                 "suggestion": "개인정보 보호법에 따라 해당 정보의 공개 여부를 신중히 검토하고, 필요시 마스킹 처리하거나 삭제하세요."
+            })
+        
+        # 전세계약서인 경우 추가 권장사항
+        if is_lease_contract and not any(issue.get("type") == "전세보증보험_권장" for issue in issues):
+            issues.append({
+                "type": "전세보증보험_권장",
+                "severity": "medium",
+                "description": "전세보증보험 가입이 권장됩니다. HUG(주택도시보증공사), HF(한국주택금융공사), SGI(서울보증보험)에서 가입 가능 여부를 확인하세요.",
+                "problematic_text": None,
+                "corrected_text": None,
+                "suggestion": "전세보증보험 가입을 통해 전세보증금 반환을 보장받을 수 있습니다. 각 기관 홈페이지에서 가입 조건을 확인하세요."
             })
         
         return {
