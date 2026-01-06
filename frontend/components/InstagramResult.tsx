@@ -164,6 +164,67 @@ export default function InstagramResult({ result }: InstagramResultProps) {
         </div>
       )}
 
+      {/* 추출 방법 정보 */}
+      {result.data.extraction_methods && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <h3 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
+            🔍 데이터 추출 방법
+          </h3>
+          <div className="space-y-2 text-xs">
+            {result.data.extraction_methods.like_count && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">좋아요:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {result.data.extraction_methods.like_count}
+                </span>
+              </div>
+            )}
+            {result.data.extraction_methods.comment_count && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">댓글:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {result.data.extraction_methods.comment_count}
+                </span>
+              </div>
+            )}
+            {result.data.extraction_methods.username && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">사용자명:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {result.data.extraction_methods.username}
+                </span>
+              </div>
+            )}
+            {result.data.extraction_methods.caption && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">캡션:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {result.data.extraction_methods.caption}
+                </span>
+              </div>
+            )}
+            {result.data.extraction_methods.post_date && (
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600 dark:text-gray-400">날짜:</span>
+                <span className="font-mono text-gray-800 dark:text-gray-200">
+                  {result.data.extraction_methods.post_date}
+                </span>
+              </div>
+            )}
+            {result.data.method && (
+              <div className="mt-3 border-t border-gray-300 pt-2 dark:border-gray-600">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">크롤링 방법:</span>
+                  <span className="font-mono text-gray-800 dark:text-gray-200">
+                    {result.data.method === 'selenium' ? 'Selenium (브라우저 자동화)' : 'Requests (HTTP 요청)'}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 안내 */}
       <div className="rounded-lg border-2 border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-700 dark:bg-yellow-900/20">
         <div className="flex items-start gap-3">

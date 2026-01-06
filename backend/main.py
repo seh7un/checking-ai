@@ -282,6 +282,8 @@ async def analyze_instagram(request: InstagramRequest):
                     "share_count": None,  # Instagram은 공유 수를 직접 제공하지 않음
                     "post_date": data.get("post_date"),
                     "caption": data.get("caption"),
+                    "method": data.get("method", "unknown"),
+                    "extraction_methods": data.get("extraction_methods", {}),  # 추출 방법 정보
                 }
             }
             

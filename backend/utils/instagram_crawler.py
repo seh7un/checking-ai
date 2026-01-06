@@ -279,9 +279,30 @@ class InstagramCrawler:
             driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
             time.sleep(2)
             
+            # 추출 방법 추적을 위한 딕셔너리
+            extraction_methods = {
+                'like_count': None,
+                'comment_count': None,
+                'username': None,
+                'caption': None,
+                'post_date': None,
+            }
+            
             # HTML에서 먼저 데이터 추출 시도 (가장 확실한 방법)
             html = driver.page_source
             html_data = self.extract_from_html(html)
+            
+            # HTML 파싱으로 추출된 데이터 확인
+            if html_data.get('like_count'):
+                extraction_methods['like_count'] = 'html_json_parsing'
+            if html_data.get('comment_count'):
+                extraction_methods['comment_count'] = 'html_json_parsing'
+            if html_data.get('username'):
+                extraction_methods['username'] = 'html_json_parsing'
+            if html_data.get('caption'):
+                extraction_methods['caption'] = 'html_json_parsing'
+            if html_data.get('post_date'):
+                extraction_methods['post_date'] = 'html_json_parsing'
             
             # 좋아요 수 추출 (여러 방법 시도)
             like_count = html_data.get('like_count')
@@ -289,23 +310,26 @@ class InstagramCrawler:
                 try:
                     # 방법 1: 버튼에서 추출
                     like_selectors = [
-                        "//button[contains(@aria-label, '좋아요')]//span",
-                        "//button[contains(@aria-label, 'like')]//span",
-                        "//a[contains(@href, '/liked_by/')]//span",
-                        "//span[contains(text(), '좋아요')]/ancestor::button//span[contains(@class, 'html-span')]",
-                        "//section//span[contains(text(), '좋아요')]/following-sibling::span",
+                        ("//button[contains(@aria-label, '좋아요')]//span", "button_aria_label_korean"),
+                        ("//button[contains(@aria-label, 'like')]//span", "button_aria_label_english"),
+                        ("//a[contains(@href, '/liked_by/')]//span", "link_href_liked_by"),
+                        ("//span[contains(text(), '좋아요')]/ancestor::button//span[contains(@class, 'html-span')]", "span_text_ancestor"),
+                        ("//section//span[contains(text(), '좋아요')]/following-sibling::span", "section_span_following"),
                     ]
-                    for selector in like_selectors:
+                    for selector, method_name in like_selectors:
                         try:
                             elements = driver.find_elements(By.XPATH, selector)
                             for element in elements:
                                 text = element.text.strip()
                                 if text and text.replace(',', '').replace('.', '').isdigit():
                                     like_count = int(text.replace(',', '').replace('.', ''))
+                                    extraction_methods['like_count'] = f'selenium_xpath_{method_name}'
+                                    safe_log(logging.INFO, f"Like count extracted using: {method_name}")
                                     break
                             if like_count:
                                 break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Selector {method_name} failed: {str(e)}")
                             continue
                     
                     # 방법 2: 텍스트에서 숫자 찾기
@@ -314,17 +338,20 @@ class InstagramCrawler:
                             page_text = driver.find_element(By.TAG_NAME, "body").text
                             # "좋아요" 또는 "likes" 다음의 숫자 찾기
                             like_patterns = [
-                                r'좋아요\s*([\d,]+)',
-                                r'likes?\s*([\d,]+)',
-                                r'([\d,]+)\s*좋아요',
-                                r'([\d,]+)\s*likes?',
+                                (r'좋아요\s*([\d,]+)', "text_pattern_korean_after"),
+                                (r'likes?\s*([\d,]+)', "text_pattern_english_after"),
+                                (r'([\d,]+)\s*좋아요', "text_pattern_korean_before"),
+                                (r'([\d,]+)\s*likes?', "text_pattern_english_before"),
                             ]
-                            for pattern in like_patterns:
+                            for pattern, method_name in like_patterns:
                                 match = re.search(pattern, page_text, re.IGNORECASE)
                                 if match:
                                     like_count = int(match.group(1).replace(',', ''))
+                                    extraction_methods['like_count'] = f'selenium_text_{method_name}'
+                                    safe_log(logging.INFO, f"Like count extracted using: {method_name}")
                                     break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Text pattern matching failed: {str(e)}")
                             pass
                 except Exception as e:
                     safe_log(logging.DEBUG, f"Could not extract like count from elements: {str(e)}")
@@ -334,23 +361,26 @@ class InstagramCrawler:
             if not comment_count:
                 try:
                     comment_selectors = [
-                        "//button[contains(@aria-label, '댓글')]//span",
-                        "//button[contains(@aria-label, 'comment')]//span",
-                        "//a[contains(@href, '/comments/')]//span",
-                        "//span[contains(text(), '댓글')]/ancestor::button//span[contains(@class, 'html-span')]",
-                        "//section//span[contains(text(), '댓글')]/following-sibling::span",
+                        ("//button[contains(@aria-label, '댓글')]//span", "button_aria_label_korean"),
+                        ("//button[contains(@aria-label, 'comment')]//span", "button_aria_label_english"),
+                        ("//a[contains(@href, '/comments/')]//span", "link_href_comments"),
+                        ("//span[contains(text(), '댓글')]/ancestor::button//span[contains(@class, 'html-span')]", "span_text_ancestor"),
+                        ("//section//span[contains(text(), '댓글')]/following-sibling::span", "section_span_following"),
                     ]
-                    for selector in comment_selectors:
+                    for selector, method_name in comment_selectors:
                         try:
                             elements = driver.find_elements(By.XPATH, selector)
                             for element in elements:
                                 text = element.text.strip()
                                 if text and text.replace(',', '').replace('.', '').isdigit():
                                     comment_count = int(text.replace(',', '').replace('.', ''))
+                                    extraction_methods['comment_count'] = f'selenium_xpath_{method_name}'
+                                    safe_log(logging.INFO, f"Comment count extracted using: {method_name}")
                                     break
                             if comment_count:
                                 break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Selector {method_name} failed: {str(e)}")
                             continue
                     
                     # 방법 2: 텍스트에서 숫자 찾기
@@ -358,17 +388,20 @@ class InstagramCrawler:
                         try:
                             page_text = driver.find_element(By.TAG_NAME, "body").text
                             comment_patterns = [
-                                r'댓글\s*([\d,]+)',
-                                r'comments?\s*([\d,]+)',
-                                r'([\d,]+)\s*댓글',
-                                r'([\d,]+)\s*comments?',
+                                (r'댓글\s*([\d,]+)', "text_pattern_korean_after"),
+                                (r'comments?\s*([\d,]+)', "text_pattern_english_after"),
+                                (r'([\d,]+)\s*댓글', "text_pattern_korean_before"),
+                                (r'([\d,]+)\s*comments?', "text_pattern_english_before"),
                             ]
-                            for pattern in comment_patterns:
+                            for pattern, method_name in comment_patterns:
                                 match = re.search(pattern, page_text, re.IGNORECASE)
                                 if match:
                                     comment_count = int(match.group(1).replace(',', ''))
+                                    extraction_methods['comment_count'] = f'selenium_text_{method_name}'
+                                    safe_log(logging.INFO, f"Comment count extracted using: {method_name}")
                                     break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Text pattern matching failed: {str(e)}")
                             pass
                 except Exception as e:
                     safe_log(logging.DEBUG, f"Could not extract comment count from elements: {str(e)}")
@@ -378,23 +411,27 @@ class InstagramCrawler:
             if not username:
                 try:
                     username_selectors = [
-                        "//header//a[contains(@href, '/')]//span",
-                        "//article//header//a[contains(@href, '/')]//span",
-                        "//a[starts-with(@href, '/') and not(contains(@href, 'instagram.com'))]//span",
+                        ("//header//a[contains(@href, '/')]//span", "header_link_span"),
+                        ("//article//header//a[contains(@href, '/')]//span", "article_header_link_span"),
+                        ("//a[starts-with(@href, '/') and not(contains(@href, 'instagram.com'))]//span", "link_href_span"),
                     ]
-                    for selector in username_selectors:
+                    for selector, method_name in username_selectors:
                         try:
                             elements = driver.find_elements(By.XPATH, selector)
                             for element in elements:
                                 text = element.text.strip()
                                 if text and not text.startswith('@') and len(text) > 0 and len(text) < 50:
                                     username = text.replace('@', '')
+                                    extraction_methods['username'] = f'selenium_xpath_{method_name}'
+                                    safe_log(logging.INFO, f"Username extracted using: {method_name}")
                                     break
                             if username:
                                 break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Selector {method_name} failed: {str(e)}")
                             continue
-                except:
+                except Exception as e:
+                    safe_log(logging.DEBUG, f"Username extraction failed: {str(e)}")
                     pass
             
             # 캡션 추출
@@ -402,22 +439,26 @@ class InstagramCrawler:
             if not caption:
                 try:
                     caption_selectors = [
-                        "//article//h1//span",
-                        "//article//div[contains(@class, '')]//span",
+                        ("//article//h1//span", "article_h1_span"),
+                        ("//article//div[contains(@class, '')]//span", "article_div_span"),
                     ]
-                    for selector in caption_selectors:
+                    for selector, method_name in caption_selectors:
                         try:
                             elements = driver.find_elements(By.XPATH, selector)
                             for element in elements:
                                 text = element.text.strip()
                                 if text and len(text) > 10:
                                     caption = text
+                                    extraction_methods['caption'] = f'selenium_xpath_{method_name}'
+                                    safe_log(logging.INFO, f"Caption extracted using: {method_name}")
                                     break
                             if caption:
                                 break
-                        except:
+                        except Exception as e:
+                            safe_log(logging.DEBUG, f"Selector {method_name} failed: {str(e)}")
                             continue
-                except:
+                except Exception as e:
+                    safe_log(logging.DEBUG, f"Caption extraction failed: {str(e)}")
                     pass
             
             # 데이터 병합
@@ -430,10 +471,14 @@ class InstagramCrawler:
                 'comment_count': comment_count or html_data.get('comment_count'),
                 'post_date': html_data.get('post_date'),
                 'share_count': None,
-                'method': 'selenium'
+                'method': 'selenium',
+                'extraction_methods': extraction_methods  # 추출 방법 정보 추가
             }
             
-            safe_log(logging.INFO, f"Extracted data: likes={data['like_count']}, comments={data['comment_count']}, username={data['username']}")
+            # 추출 방법 로그 출력
+            safe_log(logging.INFO, f"Extracted data: likes={data['like_count']} (method: {extraction_methods.get('like_count', 'none')}), "
+                                  f"comments={data['comment_count']} (method: {extraction_methods.get('comment_count', 'none')}), "
+                                  f"username={data['username']} (method: {extraction_methods.get('username', 'none')})")
             
             return data
             
@@ -481,6 +526,15 @@ class InstagramCrawler:
             # HTML에서 데이터 추출
             html_data = self.extract_from_html(html)
             
+            # 추출 방법 추적
+            extraction_methods = {
+                'like_count': 'html_json_parsing' if html_data.get('like_count') else 'oembed_only',
+                'comment_count': 'html_json_parsing' if html_data.get('comment_count') else 'oembed_only',
+                'username': 'html_json_parsing' if html_data.get('username') else ('oembed_api' if oembed_data.get('username') else 'none'),
+                'caption': 'html_json_parsing' if html_data.get('caption') else ('oembed_api' if oembed_data.get('caption') else 'none'),
+                'post_date': 'html_json_parsing' if html_data.get('post_date') else 'none',
+            }
+            
             # 데이터 병합 (oEmbed 우선, HTML로 보완)
             data = {
                 'url': url,
@@ -492,8 +546,13 @@ class InstagramCrawler:
                 'post_date': html_data.get('post_date'),
                 'share_count': None,  # Instagram은 공유 수를 직접 제공하지 않음
                 'thumbnail_url': oembed_data.get('thumbnail_url'),
-                'method': 'requests'
+                'method': 'requests',
+                'extraction_methods': extraction_methods  # 추출 방법 정보 추가
             }
+            
+            # 추출 방법 로그 출력
+            safe_log(logging.INFO, f"Extracted data (requests): likes={data['like_count']} (method: {extraction_methods.get('like_count', 'none')}), "
+                                  f"comments={data['comment_count']} (method: {extraction_methods.get('comment_count', 'none')})")
             
             # 데이터 추출 성공 여부 확인
             if not any([data['like_count'], data['comment_count'], data['post_date']]):

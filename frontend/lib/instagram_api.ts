@@ -17,6 +17,14 @@ export interface InstagramResult {
     share_count: number | null;
     post_date: string | null;
     caption: string | null;
+    method?: string;
+    extraction_methods?: {
+      like_count?: string | null;
+      comment_count?: string | null;
+      username?: string | null;
+      caption?: string | null;
+      post_date?: string | null;
+    };
   };
 }
 
