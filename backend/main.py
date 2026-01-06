@@ -19,12 +19,14 @@ load_dotenv()
 from utils.text_extractor import extract_text_from_memory
 from utils.pii_detector import PIIDetector
 from utils.ai_analyzer import AIAnalyzer
+from utils.instagram_crawler import InstagramCrawler
 from utils.logger import safe_log, log_error, sanitize_for_logging
+from pydantic import BaseModel
 
 app = FastAPI(
-    title="계약 문서 분석기 API",
-    description="계약서 분석 서비스 - Zero Storage Policy",
-    version="1.0.0"
+    title="인스타그램 크롤러 API",
+    description="인스타그램 게시물 정보 크롤링 서비스",
+    version="2.0.0"
 )
 
 # 전역 예외 핸들러
@@ -91,8 +93,8 @@ async def root():
     """Health check endpoint"""
     return {
         "status": "ok",
-        "message": "계약 문서 분석기 API is running",
-        "policy": "Zero Storage - All files processed in memory only"
+        "message": "인스타그램 크롤러 API is running",
+        "version": "2.0.0"
     }
 
 
@@ -225,6 +227,84 @@ async def analyze_document(file: UploadFile = File(...)):
         raise HTTPException(
             status_code=500,
             detail="An error occurred while processing the file. Please try again."
+        )
+
+
+# 인스타그램 크롤링 요청 모델
+class InstagramRequest(BaseModel):
+    url: str
+
+
+@app.post("/api/instagram/analyze")
+async def analyze_instagram(request: InstagramRequest):
+    """
+    인스타그램 게시물 분석 엔드포인트
+    
+    Args:
+        request: Instagram URL을 포함한 요청
+        
+    Returns:
+        게시물 정보 (좋아요, 댓글, 날짜 등)
+    """
+    try:
+        # URL 검증
+        if not request.url:
+            raise HTTPException(
+                status_code=400,
+                detail="URL is required"
+            )
+        
+        # Instagram 크롤러 초기화
+        crawler = InstagramCrawler()
+        
+        # URL 검증
+        if not crawler.validate_url(request.url):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid Instagram URL. Please provide a valid Instagram post URL (e.g., https://www.instagram.com/p/ABC123/)"
+            )
+        
+        safe_log(logging.INFO, f"Instagram URL received: {request.url}")
+        
+        # 크롤링 실행
+        try:
+            data = crawler.crawl_post(request.url)
+            
+            return {
+                "status": "success",
+                "message": "Instagram post analyzed successfully",
+                "data": {
+                    "url": data.get("url"),
+                    "post_id": data.get("post_id"),
+                    "username": data.get("username"),
+                    "like_count": data.get("like_count"),
+                    "comment_count": data.get("comment_count"),
+                    "share_count": None,  # Instagram은 공유 수를 직접 제공하지 않음
+                    "post_date": data.get("post_date"),
+                    "caption": data.get("caption"),
+                }
+            }
+            
+        except ValueError as ve:
+            # 크롤링 실패
+            raise HTTPException(
+                status_code=400,
+                detail=str(ve)
+            )
+        except Exception as crawl_error:
+            log_error(crawl_error, f"Error crawling Instagram post: {request.url}")
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to crawl Instagram post. Instagram may have changed their structure or the post may be private."
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_error(e, f"Unexpected error in analyze_instagram: {request.url if hasattr(request, 'url') else 'unknown'}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal error occurred. Please try again later."
         )
 
 

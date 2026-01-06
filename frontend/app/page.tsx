@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import FileUpload from '@/components/FileUpload';
+import InstagramUrlInput from '@/components/InstagramUrlInput';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import AnalysisResult from '@/components/AnalysisResult';
+import InstagramResult from '@/components/InstagramResult';
 import GoogleAds from '@/components/GoogleAds';
-import { analyzeDocument, AnalysisResult as AnalysisResultType } from '@/lib/api';
+import { analyzeInstagram, InstagramResult as InstagramResultType } from '@/lib/instagram_api';
 
 export default function Home() {
-  const [isUploading, setIsUploading] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResultType | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<InstagramResultType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // 환경 변수 확인 (디버깅용)
@@ -17,35 +17,32 @@ export default function Home() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     console.log('🌐 Frontend Environment Check:');
     console.log('  - NEXT_PUBLIC_API_URL:', apiUrl);
-    console.log('  - Full API URL:', `${apiUrl}/api/analyze`);
+    console.log('  - Full API URL:', `${apiUrl}/api/instagram/analyze`);
     console.log('  - NODE_ENV:', process.env.NODE_ENV);
   }, []);
 
-  const handleFileSelect = async (file: File) => {
-    setIsUploading(true);
+  const handleUrlSubmit = async (url: string) => {
+    setIsAnalyzing(true);
     setError(null);
-    setAnalysisResult(null);
+    setResult(null);
 
     try {
-      const result = await analyzeDocument(file);
-      setAnalysisResult(result);
+      const analysisResult = await analyzeInstagram(url);
+      setResult(analysisResult);
     } catch (err: any) {
-      // 에러 로깅 (민감 정보 제외)
-      // console.error는 개발 환경에서만 사용
       if (process.env.NODE_ENV === 'development') {
-        console.error('Analysis error:', err.message || 'Unknown error');
+        console.error('Instagram analysis error:', err.message || 'Unknown error');
       }
       
-      // 사용자에게 안전한 에러 메시지 표시
-      const errorMessage = err.message || '문서 분석 중 오류가 발생했습니다. 다시 시도해주세요.';
+      const errorMessage = err.message || '인스타그램 게시물 분석 중 오류가 발생했습니다. 다시 시도해주세요.';
       setError(errorMessage);
     } finally {
-      setIsUploading(false);
+      setIsAnalyzing(false);
     }
   };
 
   const handleReset = () => {
-    setAnalysisResult(null);
+    setResult(null);
     setError(null);
   };
 
@@ -55,13 +52,13 @@ export default function Home() {
         {/* Header */}
         <header className="mb-8 text-center">
           <h1 className="mb-4 text-4xl font-bold text-gray-900 dark:text-gray-100 sm:text-5xl">
-            계약 문서 분석기
+            인스타그램 크롤러
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-gray-600 dark:text-gray-400">
-            계약서에서 개인정보 노출, 불리한 조항, 법적 위험 요소를 자동으로 분석합니다.
+            인스타그램 게시물 URL을 입력하면 좋아요 수, 댓글 수, 공유 수, 게시 날짜를 분석합니다.
             <br />
             <span className="font-semibold text-blue-600 dark:text-blue-400">
-              모든 파일은 메모리에서만 처리되며 서버에 저장되지 않습니다.
+              Instagram의 이용약관을 준수하여 사용해주세요.
             </span>
           </p>
         </header>
@@ -79,13 +76,13 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="mx-auto max-w-4xl">
-          {!analysisResult && !isUploading && (
-            <section aria-label="파일 업로드">
-              <FileUpload onFileSelect={handleFileSelect} isUploading={isUploading} />
+          {!result && !isAnalyzing && (
+            <section aria-label="인스타그램 URL 입력">
+              <InstagramUrlInput onUrlSubmit={handleUrlSubmit} isAnalyzing={isAnalyzing} />
             </section>
           )}
 
-          {isUploading && (
+          {isAnalyzing && (
             <section aria-label="분석 중">
               <div className="rounded-lg border border-gray-200 bg-white p-8 dark:border-gray-700 dark:bg-gray-800">
                 <LoadingSpinner />
@@ -129,7 +126,7 @@ export default function Home() {
             </section>
           )}
 
-          {analysisResult && (
+          {result && (
             <section aria-label="분석 결과">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
@@ -139,17 +136,17 @@ export default function Home() {
                   onClick={handleReset}
                   className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                 >
-                  새 문서 분석
+                  새 게시물 분석
                 </button>
               </div>
-              <AnalysisResult result={analysisResult} />
+              <InstagramResult result={result} />
             </section>
           )}
         </div>
 
         {/* Footer */}
         <footer className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© 2024 계약 문서 분석기. All rights reserved.</p>
+          <p>© 2024 인스타그램 크롤러. All rights reserved.</p>
         </footer>
       </div>
     </main>
