@@ -424,16 +424,17 @@ class InstagramCrawler:
     
 
 
-def crawl_instagram_post(url: str) -> Dict:
+def crawl_instagram_post(url: str, use_selenium: bool = True) -> Dict:
     """
     Instagram 게시물 크롤링 헬퍼 함수
     
     Args:
         url: Instagram 게시물 URL
+        use_selenium: Selenium 사용 여부 (기본값: True)
         
     Returns:
         게시물 정보 딕셔너리
     """
-    crawler = InstagramCrawler()
+    crawler = InstagramCrawler(use_selenium=use_selenium)
     return crawler.crawl_post(url)
 
