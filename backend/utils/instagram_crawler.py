@@ -259,6 +259,9 @@ class InstagramCrawler:
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
             chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
             chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
             
             # WebDriver 생성
@@ -268,73 +271,154 @@ class InstagramCrawler:
             # 페이지 로드
             driver.get(url)
             
-            # 페이지 로딩 대기 (최대 10초)
-            wait = WebDriverWait(driver, 10)
+            # 페이지가 완전히 로드될 때까지 대기 (최대 15초)
+            time.sleep(3)  # 초기 로딩 대기
+            wait = WebDriverWait(driver, 15)
             
-            # 좋아요 수 추출 시도
-            like_count = None
-            try:
-                # 여러 가능한 선택자 시도
-                like_selectors = [
-                    "//span[contains(text(), '좋아요')]/following-sibling::span",
-                    "//span[contains(text(), 'likes')]/following-sibling::span",
-                    "//a[contains(@href, '/liked_by/')]//span",
-                    "//span[contains(@class, 'html-span')]",
-                ]
-                for selector in like_selectors:
-                    try:
-                        element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
-                        text = element.text.strip()
-                        # 숫자만 추출
-                        numbers = re.findall(r'[\d,]+', text.replace(',', ''))
-                        if numbers:
-                            like_count = int(numbers[0].replace(',', ''))
-                            break
-                    except:
-                        continue
-            except Exception as e:
-                safe_log(logging.DEBUG, f"Could not extract like count: {str(e)}")
+            # 페이지 스크롤 (게시물이 완전히 로드되도록)
+            driver.execute_script("window.scrollTo(0, document.body.scrollHeight/2);")
+            time.sleep(2)
             
-            # 댓글 수 추출 시도
-            comment_count = None
-            try:
-                comment_selectors = [
-                    "//span[contains(text(), '댓글')]/following-sibling::span",
-                    "//span[contains(text(), 'comments')]/following-sibling::span",
-                    "//a[contains(@href, '/comments/')]//span",
-                ]
-                for selector in comment_selectors:
-                    try:
-                        element = driver.find_element(By.XPATH, selector)
-                        text = element.text.strip()
-                        numbers = re.findall(r'[\d,]+', text.replace(',', ''))
-                        if numbers:
-                            comment_count = int(numbers[0].replace(',', ''))
-                            break
-                    except:
-                        continue
-            except Exception as e:
-                safe_log(logging.DEBUG, f"Could not extract comment count: {str(e)}")
-            
-            # 사용자명 추출
-            username = None
-            try:
-                username_element = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/') and not(contains(@href, 'instagram.com'))]//span")))
-                username = username_element.text.strip().replace('@', '')
-            except:
-                pass
-            
-            # 캡션 추출
-            caption = None
-            try:
-                caption_element = driver.find_element(By.XPATH, "//h1[contains(@class, '')]//span")
-                caption = caption_element.text.strip()
-            except:
-                pass
-            
-            # HTML에서 추가 데이터 추출
+            # HTML에서 먼저 데이터 추출 시도 (가장 확실한 방법)
             html = driver.page_source
             html_data = self.extract_from_html(html)
+            
+            # 좋아요 수 추출 (여러 방법 시도)
+            like_count = html_data.get('like_count')
+            if not like_count:
+                try:
+                    # 방법 1: 버튼에서 추출
+                    like_selectors = [
+                        "//button[contains(@aria-label, '좋아요')]//span",
+                        "//button[contains(@aria-label, 'like')]//span",
+                        "//a[contains(@href, '/liked_by/')]//span",
+                        "//span[contains(text(), '좋아요')]/ancestor::button//span[contains(@class, 'html-span')]",
+                        "//section//span[contains(text(), '좋아요')]/following-sibling::span",
+                    ]
+                    for selector in like_selectors:
+                        try:
+                            elements = driver.find_elements(By.XPATH, selector)
+                            for element in elements:
+                                text = element.text.strip()
+                                if text and text.replace(',', '').replace('.', '').isdigit():
+                                    like_count = int(text.replace(',', '').replace('.', ''))
+                                    break
+                            if like_count:
+                                break
+                        except:
+                            continue
+                    
+                    # 방법 2: 텍스트에서 숫자 찾기
+                    if not like_count:
+                        try:
+                            page_text = driver.find_element(By.TAG_NAME, "body").text
+                            # "좋아요" 또는 "likes" 다음의 숫자 찾기
+                            like_patterns = [
+                                r'좋아요\s*([\d,]+)',
+                                r'likes?\s*([\d,]+)',
+                                r'([\d,]+)\s*좋아요',
+                                r'([\d,]+)\s*likes?',
+                            ]
+                            for pattern in like_patterns:
+                                match = re.search(pattern, page_text, re.IGNORECASE)
+                                if match:
+                                    like_count = int(match.group(1).replace(',', ''))
+                                    break
+                        except:
+                            pass
+                except Exception as e:
+                    safe_log(logging.DEBUG, f"Could not extract like count from elements: {str(e)}")
+            
+            # 댓글 수 추출 (여러 방법 시도)
+            comment_count = html_data.get('comment_count')
+            if not comment_count:
+                try:
+                    comment_selectors = [
+                        "//button[contains(@aria-label, '댓글')]//span",
+                        "//button[contains(@aria-label, 'comment')]//span",
+                        "//a[contains(@href, '/comments/')]//span",
+                        "//span[contains(text(), '댓글')]/ancestor::button//span[contains(@class, 'html-span')]",
+                        "//section//span[contains(text(), '댓글')]/following-sibling::span",
+                    ]
+                    for selector in comment_selectors:
+                        try:
+                            elements = driver.find_elements(By.XPATH, selector)
+                            for element in elements:
+                                text = element.text.strip()
+                                if text and text.replace(',', '').replace('.', '').isdigit():
+                                    comment_count = int(text.replace(',', '').replace('.', ''))
+                                    break
+                            if comment_count:
+                                break
+                        except:
+                            continue
+                    
+                    # 방법 2: 텍스트에서 숫자 찾기
+                    if not comment_count:
+                        try:
+                            page_text = driver.find_element(By.TAG_NAME, "body").text
+                            comment_patterns = [
+                                r'댓글\s*([\d,]+)',
+                                r'comments?\s*([\d,]+)',
+                                r'([\d,]+)\s*댓글',
+                                r'([\d,]+)\s*comments?',
+                            ]
+                            for pattern in comment_patterns:
+                                match = re.search(pattern, page_text, re.IGNORECASE)
+                                if match:
+                                    comment_count = int(match.group(1).replace(',', ''))
+                                    break
+                        except:
+                            pass
+                except Exception as e:
+                    safe_log(logging.DEBUG, f"Could not extract comment count from elements: {str(e)}")
+            
+            # 사용자명 추출
+            username = html_data.get('username')
+            if not username:
+                try:
+                    username_selectors = [
+                        "//header//a[contains(@href, '/')]//span",
+                        "//article//header//a[contains(@href, '/')]//span",
+                        "//a[starts-with(@href, '/') and not(contains(@href, 'instagram.com'))]//span",
+                    ]
+                    for selector in username_selectors:
+                        try:
+                            elements = driver.find_elements(By.XPATH, selector)
+                            for element in elements:
+                                text = element.text.strip()
+                                if text and not text.startswith('@') and len(text) > 0 and len(text) < 50:
+                                    username = text.replace('@', '')
+                                    break
+                            if username:
+                                break
+                        except:
+                            continue
+                except:
+                    pass
+            
+            # 캡션 추출
+            caption = html_data.get('caption')
+            if not caption:
+                try:
+                    caption_selectors = [
+                        "//article//h1//span",
+                        "//article//div[contains(@class, '')]//span",
+                    ]
+                    for selector in caption_selectors:
+                        try:
+                            elements = driver.find_elements(By.XPATH, selector)
+                            for element in elements:
+                                text = element.text.strip()
+                                if text and len(text) > 10:
+                                    caption = text
+                                    break
+                            if caption:
+                                break
+                        except:
+                            continue
+                except:
+                    pass
             
             # 데이터 병합
             data = {
@@ -348,6 +432,8 @@ class InstagramCrawler:
                 'share_count': None,
                 'method': 'selenium'
             }
+            
+            safe_log(logging.INFO, f"Extracted data: likes={data['like_count']}, comments={data['comment_count']}, username={data['username']}")
             
             return data
             
