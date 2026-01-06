@@ -1,17 +1,32 @@
 """
 인스타그램 크롤링 모듈
 Instagram 게시물 정보 추출 (좋아요, 댓글, 날짜 등)
-Instagram oEmbed API 및 HTML 파싱 사용
+Selenium을 사용한 동적 웹 페이지 크롤링
 """
 import re
 import requests
 import json
+import time
 from typing import Dict, Optional
 from datetime import datetime
 from utils.logger import safe_log, log_error
 import logging
 from dotenv import load_dotenv
 import os
+
+# Selenium imports
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from webdriver_manager.chrome import ChromeDriverManager
+    SELENIUM_AVAILABLE = True
+except ImportError:
+    SELENIUM_AVAILABLE = False
+    safe_log(logging.WARNING, "Selenium not available. Install selenium and webdriver-manager for better Instagram crawling.")
 
 # 환경 변수 로드
 load_dotenv()
@@ -20,7 +35,12 @@ load_dotenv()
 class InstagramCrawler:
     """인스타그램 게시물 크롤링 클래스"""
     
-    def __init__(self):
+    def __init__(self, use_selenium: bool = True):
+        """
+        Args:
+            use_selenium: Selenium 사용 여부 (기본값: True)
+        """
+        self.use_selenium = use_selenium and SELENIUM_AVAILABLE
         self.session = requests.Session()
         # Instagram이 봇을 차단할 수 있으므로 User-Agent 설정
         self.session.headers.update({
@@ -219,10 +239,129 @@ class InstagramCrawler:
         
         return data
     
+    def crawl_with_selenium(self, url: str) -> Dict:
+        """
+        Selenium을 사용한 Instagram 크롤링
+        JavaScript 렌더링이 완료된 후 데이터 추출
+        
+        Args:
+            url: Instagram 게시물 URL
+            
+        Returns:
+            게시물 정보 딕셔너리
+        """
+        driver = None
+        try:
+            # Chrome 옵션 설정
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')  # 헤드리스 모드
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--window-size=1920,1080')
+            chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            
+            # WebDriver 생성
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+            
+            # 페이지 로드
+            driver.get(url)
+            
+            # 페이지 로딩 대기 (최대 10초)
+            wait = WebDriverWait(driver, 10)
+            
+            # 좋아요 수 추출 시도
+            like_count = None
+            try:
+                # 여러 가능한 선택자 시도
+                like_selectors = [
+                    "//span[contains(text(), '좋아요')]/following-sibling::span",
+                    "//span[contains(text(), 'likes')]/following-sibling::span",
+                    "//a[contains(@href, '/liked_by/')]//span",
+                    "//span[contains(@class, 'html-span')]",
+                ]
+                for selector in like_selectors:
+                    try:
+                        element = wait.until(EC.presence_of_element_located((By.XPATH, selector)))
+                        text = element.text.strip()
+                        # 숫자만 추출
+                        numbers = re.findall(r'[\d,]+', text.replace(',', ''))
+                        if numbers:
+                            like_count = int(numbers[0].replace(',', ''))
+                            break
+                    except:
+                        continue
+            except Exception as e:
+                safe_log(logging.DEBUG, f"Could not extract like count: {str(e)}")
+            
+            # 댓글 수 추출 시도
+            comment_count = None
+            try:
+                comment_selectors = [
+                    "//span[contains(text(), '댓글')]/following-sibling::span",
+                    "//span[contains(text(), 'comments')]/following-sibling::span",
+                    "//a[contains(@href, '/comments/')]//span",
+                ]
+                for selector in comment_selectors:
+                    try:
+                        element = driver.find_element(By.XPATH, selector)
+                        text = element.text.strip()
+                        numbers = re.findall(r'[\d,]+', text.replace(',', ''))
+                        if numbers:
+                            comment_count = int(numbers[0].replace(',', ''))
+                            break
+                    except:
+                        continue
+            except Exception as e:
+                safe_log(logging.DEBUG, f"Could not extract comment count: {str(e)}")
+            
+            # 사용자명 추출
+            username = None
+            try:
+                username_element = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(@href, '/') and not(contains(@href, 'instagram.com'))]//span")))
+                username = username_element.text.strip().replace('@', '')
+            except:
+                pass
+            
+            # 캡션 추출
+            caption = None
+            try:
+                caption_element = driver.find_element(By.XPATH, "//h1[contains(@class, '')]//span")
+                caption = caption_element.text.strip()
+            except:
+                pass
+            
+            # HTML에서 추가 데이터 추출
+            html = driver.page_source
+            html_data = self.extract_from_html(html)
+            
+            # 데이터 병합
+            data = {
+                'url': url,
+                'post_id': self.parse_instagram_url(url),
+                'username': username or html_data.get('username'),
+                'caption': caption or html_data.get('caption'),
+                'like_count': like_count or html_data.get('like_count'),
+                'comment_count': comment_count or html_data.get('comment_count'),
+                'post_date': html_data.get('post_date'),
+                'share_count': None,
+                'method': 'selenium'
+            }
+            
+            return data
+            
+        except Exception as e:
+            log_error(e, f"Error with Selenium crawling: {url}")
+            raise ValueError(f"Selenium crawling failed: {str(e)}")
+        finally:
+            if driver:
+                driver.quit()
+    
     def crawl_post(self, url: str) -> Dict:
         """
         Instagram 게시물 정보 크롤링
-        oEmbed API + HTML 파싱 조합 사용
+        Selenium 우선 사용, 실패 시 oEmbed + HTML 파싱
         
         Args:
             url: Instagram 게시물 URL
@@ -234,6 +373,15 @@ class InstagramCrawler:
         if not self.validate_url(url):
             raise ValueError("Invalid Instagram URL. Please provide a valid Instagram post URL.")
         
+        # Selenium 사용 시도
+        if self.use_selenium:
+            try:
+                safe_log(logging.INFO, f"Attempting Selenium crawl for: {url}")
+                return self.crawl_with_selenium(url)
+            except Exception as e:
+                safe_log(logging.WARNING, f"Selenium crawl failed, falling back to requests: {str(e)}")
+        
+        # 폴백: oEmbed + HTML 파싱
         try:
             # 1단계: oEmbed API로 기본 정보 가져오기
             oembed_data = self.get_oembed_data(url)
@@ -258,6 +406,7 @@ class InstagramCrawler:
                 'post_date': html_data.get('post_date'),
                 'share_count': None,  # Instagram은 공유 수를 직접 제공하지 않음
                 'thumbnail_url': oembed_data.get('thumbnail_url'),
+                'method': 'requests'
             }
             
             # 데이터 추출 성공 여부 확인
