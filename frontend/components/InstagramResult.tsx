@@ -30,6 +30,35 @@ export default function InstagramResult({ result }: InstagramResultProps) {
     }
   };
 
+  const formatMethodName = (method: string | null | undefined) => {
+    if (!method) return 'N/A';
+    
+    // 추출 방법 이름을 읽기 쉽게 변환
+    const methodMap: Record<string, string> = {
+      'html_json_parsing': '📄 HTML JSON 파싱',
+      'selenium_xpath_button_aria_label_korean': '🔘 Selenium XPath (버튼, 한국어)',
+      'selenium_xpath_button_aria_label_english': '🔘 Selenium XPath (버튼, 영어)',
+      'selenium_xpath_link_href_liked_by': '🔗 Selenium XPath (링크, 좋아요)',
+      'selenium_xpath_link_href_comments': '🔗 Selenium XPath (링크, 댓글)',
+      'selenium_xpath_span_text_ancestor': '📝 Selenium XPath (텍스트 기반)',
+      'selenium_xpath_section_span_following': '📋 Selenium XPath (섹션)',
+      'selenium_text_pattern_korean_after': '🔤 텍스트 패턴 (한국어, 뒤)',
+      'selenium_text_pattern_english_after': '🔤 텍스트 패턴 (영어, 뒤)',
+      'selenium_text_pattern_korean_before': '🔤 텍스트 패턴 (한국어, 앞)',
+      'selenium_text_pattern_english_before': '🔤 텍스트 패턴 (영어, 앞)',
+      'selenium_xpath_header_link_span': '👤 Selenium XPath (헤더)',
+      'selenium_xpath_article_header_link_span': '👤 Selenium XPath (아티클 헤더)',
+      'selenium_xpath_link_href_span': '👤 Selenium XPath (링크)',
+      'selenium_xpath_article_h1_span': '📄 Selenium XPath (H1)',
+      'selenium_xpath_article_div_span': '📄 Selenium XPath (DIV)',
+      'oembed_api': '🔌 oEmbed API',
+      'oembed_only': '🔌 oEmbed만 사용',
+      'none': '❌ 추출 실패',
+    };
+    
+    return methodMap[method] || method;
+  };
+
   return (
     <div className="space-y-6">
       {/* 기본 정보 */}
@@ -166,57 +195,70 @@ export default function InstagramResult({ result }: InstagramResultProps) {
 
       {/* 추출 방법 정보 */}
       {result.data.extraction_methods && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/50">
-          <h3 className="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
-            🔍 데이터 추출 방법
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/20">
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-200">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            데이터 추출 방법
           </h3>
           <div className="space-y-2 text-xs">
             {result.data.extraction_methods.like_count && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">좋아요:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {result.data.extraction_methods.like_count}
+              <div className="flex items-center justify-between rounded bg-white/50 px-3 py-2 dark:bg-gray-800/50">
+                <span className="font-medium text-gray-700 dark:text-gray-300">좋아요:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-300">
+                  {formatMethodName(result.data.extraction_methods.like_count)}
                 </span>
               </div>
             )}
             {result.data.extraction_methods.comment_count && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">댓글:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {result.data.extraction_methods.comment_count}
+              <div className="flex items-center justify-between rounded bg-white/50 px-3 py-2 dark:bg-gray-800/50">
+                <span className="font-medium text-gray-700 dark:text-gray-300">댓글:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-300">
+                  {formatMethodName(result.data.extraction_methods.comment_count)}
                 </span>
               </div>
             )}
             {result.data.extraction_methods.username && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">사용자명:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {result.data.extraction_methods.username}
+              <div className="flex items-center justify-between rounded bg-white/50 px-3 py-2 dark:bg-gray-800/50">
+                <span className="font-medium text-gray-700 dark:text-gray-300">사용자명:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-300">
+                  {formatMethodName(result.data.extraction_methods.username)}
                 </span>
               </div>
             )}
             {result.data.extraction_methods.caption && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">캡션:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {result.data.extraction_methods.caption}
+              <div className="flex items-center justify-between rounded bg-white/50 px-3 py-2 dark:bg-gray-800/50">
+                <span className="font-medium text-gray-700 dark:text-gray-300">캡션:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-300">
+                  {formatMethodName(result.data.extraction_methods.caption)}
                 </span>
               </div>
             )}
             {result.data.extraction_methods.post_date && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600 dark:text-gray-400">날짜:</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">
-                  {result.data.extraction_methods.post_date}
+              <div className="flex items-center justify-between rounded bg-white/50 px-3 py-2 dark:bg-gray-800/50">
+                <span className="font-medium text-gray-700 dark:text-gray-300">날짜:</span>
+                <span className="font-mono text-blue-700 dark:text-blue-300">
+                  {formatMethodName(result.data.extraction_methods.post_date)}
                 </span>
               </div>
             )}
             {result.data.method && (
-              <div className="mt-3 border-t border-gray-300 pt-2 dark:border-gray-600">
+              <div className="mt-3 border-t border-blue-300 pt-3 dark:border-blue-700">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">크롤링 방법:</span>
-                  <span className="font-mono text-gray-800 dark:text-gray-200">
-                    {result.data.method === 'selenium' ? 'Selenium (브라우저 자동화)' : 'Requests (HTTP 요청)'}
+                  <span className="font-medium text-gray-700 dark:text-gray-300">크롤링 엔진:</span>
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">
+                    {result.data.method === 'selenium' ? '🖥️ Selenium (브라우저 자동화)' : '🌐 Requests (HTTP 요청)'}
                   </span>
                 </div>
               </div>
